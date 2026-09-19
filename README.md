@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/hammas159/commit-history-forensics/actions/workflows/ci.yml"><img src="https://github.com/hammas159/commit-history-forensics/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/hammas159/commit-history-forensics" alt="license"></a>
+  <a href="https://github.com/hammasbuilds/commit-history-forensics/actions/workflows/ci.yml"><img src="https://github.com/hammasbuilds/commit-history-forensics/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/hammasbuilds/commit-history-forensics" alt="license"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/tests-13%20passing-brightgreen" alt="tests">
   <img src="https://img.shields.io/badge/runtime%20deps-zero-success" alt="zero dependencies">
