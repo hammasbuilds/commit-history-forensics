@@ -2,7 +2,7 @@
 
 [<- back to README](../README.md)
 
-## The 25/25 result is weaker evidence than it looks
+## The 46/46 result is weaker evidence than it looks
 
 The genuine repositories mostly have **fewer than 15 commits each**, and all are by **one
 author**.
@@ -11,7 +11,24 @@ Two of the five signals are gated on commit count (10 and 30), and one on a 60-d
 On repositories this small, **those signals can never fire** - so "zero false positives" is
 partly a statement about the evaluation set, not only about the detector.
 
-A larger and more varied genuine corpus is the single most valuable next step.
+`score.py` now measures that rather than leaving it as prose. Over the 48 repositories in
+the current run:
+
+| signal | exercised on | share |
+|---|---:|---:|
+| `backdated_commits` | 41 / 48 | 85% |
+| `single_file_every_commit` | 33 / 48 | 69% |
+| `implausible_cadence` | 33 / 48 | 69% |
+| `templated_messages` | 5 / 48 | 10% |
+| `saturated_calendar` | 2 / 48 | 4% |
+
+So two of the five signals have essentially no evidence behind them in either direction:
+`templated_messages` needs 30 commits and reached 5 repositories, `saturated_calendar` needs
+a 60-day span and reached 2. A clean sweep tells you nothing about a signal that never ran.
+
+The defensible claim is **zero false positives across the 33 repositories where the signals
+could fire**. A larger and more varied genuine corpus is still the single most valuable next
+step - and it is what would let the last two signals be evaluated at all.
 
 ## A short, careful forgery escapes
 

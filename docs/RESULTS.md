@@ -4,7 +4,7 @@
 
 ## Evaluation set
 
-**25 genuine histories** - 24 real repositories with real development history, plus one
+**46 genuine histories** - 45 real repositories with real development history, plus one
 control repository committed normally by `generate_realistic()`.
 
 **2 fabricated histories** built by `src/synthesize.py`:
@@ -30,7 +30,7 @@ control repository committed normally by `generate_realistic()`.
 | `fake_naive` | 224 | **3,196,575 s (37 days)** | **1.00** |
 | `fake_hidden` | 233 | 0 s | **1.00** |
 | control (genuine) | 40 | 0 s | 3.2 |
-| 24 real repositories | 2 - 12 each | 0 s | 1.0 - 95.6 |
+| 45 real repositories | 1 - 50 each | 0 s | 1.0 - 45.6 |
 
 ### Why `fake_hidden` is the interesting row
 

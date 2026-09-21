@@ -16,13 +16,13 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/tests-13%20passing-brightgreen" alt="tests">
   <img src="https://img.shields.io/badge/runtime%20deps-zero-success" alt="zero dependencies">
-  <img src="https://img.shields.io/badge/false%20positives-0%2F25-brightgreen" alt="false positives">
+  <img src="https://img.shields.io/badge/false%20positives-0%2F46-brightgreen" alt="false positives">
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/badge/lint-ruff-261230" alt="ruff"></a>
 </p>
 
 ---
 
-> ### 25/25 genuine repositories clean. 2/2 fabrications caught - including one that hides the timestamp tell.
+> ### 46/46 genuine repositories clean. 2/2 fabrications caught - including one that hides the timestamp tell.
 
 Contribution-graph generators produce a year of green squares in minutes. This measures how
 well they hide, using only **structural** properties of the history - timestamps,
@@ -37,9 +37,28 @@ disagree with a number rather than with a black box.
 
 | | Repos | Verdict |
 |---|---:|---|
-| Genuine histories | **25** | **25 CLEAN** - zero false positives |
+| Genuine histories | **46** | **46 CLEAN** - zero false positives |
 | Fabricated, naive | 1 | **FABRICATED** (4/5 signals) |
 | Fabricated, committer date concealed | 1 | **FABRICATED** (3/5 signals) |
+
+**What "zero false positives" is worth here.** A clean sweep is only as strong as the share
+of the set where a positive was reachable at all, so `score.py` now prints that too:
+
+```
+signal                        exercised on   share
+----------------------------------------------------
+backdated_commits                41 / 48      85%
+single_file_every_commit         33 / 48      69%
+implausible_cadence              33 / 48      69%
+templated_messages                5 / 48      10%
+saturated_calendar                2 / 48       4%
+```
+
+Four of the five signals need at least 10 commits, and only 33 of the 48 repositories have
+them. `saturated_calendar` needs a span over 60 days and was exercised on 2. So the honest
+version of the headline is **zero false positives across the 33 repositories where the
+signals could fire**, not across 48 - and `templated_messages` and `saturated_calendar` are
+barely evidenced either way. Reporting 46/46 without that is a denominator doing the work.
 
 **The second fabrication is the one that matters.** Setting `GIT_COMMITTER_DATE` defeats
 the timestamp signal completely - and it is still caught, because it edits exactly one file
@@ -50,7 +69,7 @@ in every commit and real work does not.
 | `fake_naive` | **37 days** | **1.00** |
 | `fake_hidden` | 0 days | **1.00** |
 | control (genuine) | 0 days | 3.2 |
-| 24 real repositories | 0 days | 1.0 - 95.6 |
+| 45 real repositories | 0 days | 1.0 - 45.6 |
 
 &#128202; **[Full results and the fingerprint of every repository &rarr;](docs/RESULTS.md)**
 
@@ -133,7 +152,7 @@ An adversary who **both** conceals the committer date **and** keeps the history 
 `test_short_hidden_fake_is_only_suspicious` asserts exactly that, so the limitation cannot
 quietly disappear or quietly get worse.
 
-&#9888; **[Every limitation, including how weak the 25/25 really is &rarr;](docs/LIMITATIONS.md)**
+&#9888; **[Every limitation, including how weak the 46/46 really is &rarr;](docs/LIMITATIONS.md)**
 
 ---
 
@@ -144,7 +163,7 @@ quietly disappear or quietly get worse.
 | &#128202; **[Results](docs/RESULTS.md)** | Every repository's fingerprint and verdict |
 | &#128269; **[The signals](docs/SIGNALS.md)** | Each threshold, its reasoning, and what defeats it |
 | &#128736; **[Problems hit](docs/PROBLEMS.md)** | Empty-repo crash, a fixture that hid a real weakness |
-| &#9888; **[Limitations](docs/LIMITATIONS.md)** | Why 25/25 is weaker evidence than it looks |
+| &#9888; **[Limitations](docs/LIMITATIONS.md)** | Why 46/46 is weaker evidence than it looks |
 | &#128640; **[Future work](docs/FUTURE.md)** | Larger corpus, multi-author signals, calibrated scoring |
 
 ---

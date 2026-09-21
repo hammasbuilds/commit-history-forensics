@@ -99,6 +99,43 @@ def report(repo: Path) -> dict:
     }
 
 
+# Each signal has a floor below which it cannot fire at all. A CLEAN verdict on a repo
+# under that floor is structurally guaranteed, not a passed test - and counting it as one
+# inflates a false-positive rate with repositories the detector never examined.
+SIGNAL_FLOOR = {
+    "backdated_commits": lambda f: f.commits >= 2,
+    "single_file_every_commit": lambda f: f.commits >= 10,
+    "templated_messages": lambda f: f.commits >= 30,
+    "implausible_cadence": lambda f: f.commits >= 10,
+    "saturated_calendar": lambda f: f.span_days > 60,
+}
+
+
+def coverage(scored: list[dict]) -> None:
+    """How much of the evaluation set each signal could actually have fired on.
+
+    Printed because "zero false positives across N repositories" is only worth as much as
+    the share of those N where a positive was even reachable.
+    """
+    if not scored:
+        return
+    total = len(scored)
+    print()
+    print(f"{'signal':28} {'exercised on':>13}  {'share':>6}")
+    print("-" * 52)
+    for name, ok in SIGNAL_FLOOR.items():
+        n = sum(1 for r in scored if ok(r["fingerprint"]))
+        print(f"{name:28} {n:>6} / {total:<4} {n / total:>6.0%}")
+    print()
+    clean = sum(1 for r in scored if r["verdict"] == "CLEAN")
+    testable = sum(1 for r in scored if r["fingerprint"].commits >= 10)
+    print(
+        f"{clean}/{total} CLEAN, but only {testable} have the >= 10 commits that four of the "
+        f"five signals require."
+    )
+    print("The false-positive claim rests on those, not on the full count.")
+
+
 if __name__ == "__main__":
     import sys
 
@@ -107,6 +144,7 @@ if __name__ == "__main__":
     for root in roots:
         repos.extend(find_repos(root))
 
+    scored: list[dict] = []
     print(f"{'repo':32} {'n':>5}  {'verdict':12} flags  evidence")
     print("-" * 100)
     for repo in repos:
@@ -117,3 +155,6 @@ if __name__ == "__main__":
             continue
         first = next((s.name for s in r["signals"] if s.fired), "-")
         print(f"{r['repo']:32} {r['commits']:5}  {r['verdict']:12} {r['flags']:5}  {first}")
+        scored.append(r)
+
+    coverage(scored)
