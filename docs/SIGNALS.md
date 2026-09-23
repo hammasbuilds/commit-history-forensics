@@ -64,3 +64,42 @@ the two signals a short forgery escapes.
 A blended score was deliberately avoided: a single number tells you *that* a repository
 looked odd but not *why*, and the signals fail differently enough that the distinction
 matters.
+
+---
+
+## Every "what defeats it" above is measured, not asserted
+
+`src/adversaries.py` builds one fabrication per signal and `tests/test_forensics.py` asserts
+that each one really does defeat the signal it targets. Two seeds each:
+
+| Adversary | Targets | Flags left | Result |
+|---|---|---:|---|
+| `naive` | nothing | 4 | FABRICATED |
+| `hidden_skew` | signal 1 | 3 | FABRICATED |
+| `varied_messages` | signal 3 | 2 | SUSPICIOUS |
+| `human_hours` | hour uniformity | 2 | SUSPICIOUS |
+| `bursty` | signal 4 | 2 | SUSPICIOUS |
+| `varied_files` | signal 2 | 1 | ONE FLAG |
+| `full_stealth` | all of them | **0** | **CLEAN** |
+| `backfilled` | all, then real work | **0** | **CLEAN** |
+
+## Signal 3's conjunction is doing real work, in both directions
+
+Across the 86 genuine repositories, **11 exceed the 98% unique-subject threshold** - `black`
+at 0.997, and `classical-computer-vision`, `nlp-lab` and `code-llm-lab` at exactly 1.000.
+Every one is saved from a false positive only by the `files_always_one` half. Without it
+signal 3 alone would be wrong on 11 of the 43 repositories it is exercised against: a 26%
+false-positive rate.
+
+The same conjunction is why `varied_files` scores **lower** than adversaries that hide less.
+Varying files defeats signal 2 and signal 3 together, so templated subjects stop mattering.
+
+Precision and evadability are the same property here, and it cannot be tuned away - only
+replaced by a signal that reads something other than file counts.
+
+## Signal 1 has no false-positive pressure at all
+
+**Zero of the 86 genuine repositories have a median author&rarr;committer gap above one
+day.** Rebases, cherry-picks and patch-based workflows move the committer date forward, so
+the median stays at zero. The threshold could be far tighter without costing anything -
+which is also why a single `GIT_COMMITTER_DATE` defeats it permanently.

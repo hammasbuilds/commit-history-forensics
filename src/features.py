@@ -40,7 +40,38 @@ class Commit:
 
 
 def read_commits(repo: Path, limit: int | None = None) -> list[Commit]:
-    args = ["git", "-C", str(repo), "log", f"--pretty=format:{LOG_FORMAT}", "--numstat"]
+    # --name-only, not --numstat, and --no-renames on purpose. Both matter on a
+    # partial clone, which is how anyone sensibly clones a large repository to
+    # check it: `git clone --filter=blob:none` downloads commits and trees but
+    # no file contents.
+    #
+    #   --numstat counts added and deleted *lines*, so it has to read every
+    #   blob. On a blobless clone git fetches them from the promisor remote one
+    #   at a time, over the network, and the scan appears to hang forever. This
+    #   code never used the line counts - it only counts the rows - so paths
+    #   are all it ever needed.
+    #
+    #   Rename detection is on by default since git 2.9 and compares blob
+    #   contents to decide whether a delete plus an add is really a rename,
+    #   which drags the blobs back in. For counting how many files a commit
+    #   touched, a rename is a touched path either way.
+    #
+    # Measured on a blobless clone of aiohttp: --numstat could not complete at
+    # all, --name-only --no-renames read the full history in about a second.
+    #
+    # The one behavioural difference: without rename detection a pure rename
+    # counts as two paths (the delete and the add) rather than one. That makes
+    # `files_always_one` very slightly harder to trip, which is the safe
+    # direction for a signal whose false positives matter.
+    args = [
+        "git",
+        "-C",
+        str(repo),
+        "log",
+        f"--pretty=format:{LOG_FORMAT}",
+        "--name-only",
+        "--no-renames",
+    ]
     if limit:
         args.insert(4, f"-n{limit}")
     # check=False on purpose: an empty repo is a legitimate outcome handled below,
@@ -62,7 +93,7 @@ def read_commits(repo: Path, limit: int | None = None) -> list[Commit]:
             current = Commit(sha, int(atime), int(ctime), subject, 0)
             commits.append(current)
         elif line.strip() and current is not None:
-            # numstat rows are "added<TAB>deleted<TAB>path"
+            # one row per path touched by the commit
             current.files += 1
     return commits
 

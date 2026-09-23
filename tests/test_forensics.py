@@ -170,3 +170,129 @@ def test_find_repos_skips_plain_directories(tmp_path, genuine):
     found = {p.name for p in find_repos(tmp_path)}
     assert "is-a-repo" in found
     assert "not-a-repo" not in found
+
+
+# --- the adversaries ---------------------------------------------------------
+#
+# The published result was 2 of 2 fabrications caught, and both came from the
+# same generator: the second differed only in setting GIT_COMMITTER_DATE. A
+# detector scored against one trick it already knows will always look perfect,
+# so these build one adversary per signal and check the interesting property —
+# that each really does defeat the signal it targets.
+
+
+def test_every_adversary_targets_a_different_signal():
+    from adversaries import ADVERSARIES
+
+    assert len(ADVERSARIES) >= 8
+    targets = {defeats for _, defeats in ADVERSARIES.values()}
+    assert len(targets) == len(ADVERSARIES), "two adversaries attack the same thing"
+
+
+def test_the_naive_forgery_leaves_the_skew_it_is_named_for(tmp_path):
+    """The baseline. `git commit --date` sets only the author date, so the
+    committer date stays at now and the gap is enormous."""
+    from adversaries import fabricate
+    from features import fingerprint
+
+    repo = fabricate(tmp_path / "naive", days=40, seed=1)
+    f = fingerprint(repo)
+    assert f.commits > 10
+    assert f.skew_median > 86_400, "a naive forgery must show author->committer skew"
+
+
+def test_hiding_the_committer_date_removes_that_skew(tmp_path):
+    """And this is why one signal is never enough."""
+    from adversaries import fabricate
+    from features import fingerprint
+
+    repo = fabricate(tmp_path / "hidden", days=40, seed=1, hide_skew=True)
+    f = fingerprint(repo)
+    assert f.skew_median < 60, "setting GIT_COMMITTER_DATE should erase the skew"
+
+
+def test_varying_files_defeats_the_one_file_signal(tmp_path):
+    from adversaries import fabricate
+    from features import fingerprint
+
+    plain = fingerprint(fabricate(tmp_path / "plain", days=25, seed=2, hide_skew=True))
+    varied = fingerprint(
+        fabricate(tmp_path / "varied", days=25, seed=2, hide_skew=True, vary_files=True)
+    )
+    assert plain.files_always_one
+    assert not varied.files_always_one
+
+
+def test_character_entropy_ranks_a_forgery_above_real_messages(tmp_path):
+    """A defect in the feature, found by writing the obvious test and being wrong.
+
+    The expectation was that realistic subjects carry more entropy than
+    timestamp templates. They carry **less**: 5.95 against 6.07. A template
+    reading "Contribution: 2026-09-23 14:33" embeds a unique timestamp in
+    every subject, so it is maximally diverse at the character level, while
+    real messages reuse a working vocabulary — "Fix parser", "Fix cache".
+
+    `subject_entropy` is therefore not usable as evidence of fabrication in
+    the direction anyone would assume, and `score.py` is right not to use it:
+    the scored signal is `subject_unique_share`, tested below.
+    """
+    from adversaries import fabricate
+    from features import fingerprint
+
+    templated = fingerprint(fabricate(tmp_path / "tpl", days=25, seed=3, hide_skew=True))
+    varied = fingerprint(
+        fabricate(tmp_path / "var", days=25, seed=3, hide_skew=True, vary_messages=True)
+    )
+    assert templated.subject_entropy > varied.subject_entropy
+
+
+def test_the_message_signal_is_gated_on_the_file_signal(tmp_path):
+    """The structural weakness worth knowing about.
+
+    `templated_messages` fires only when `subject_unique_share > 0.98` AND
+    `files_always_one`. So an adversary that varies the files it touches
+    defeats **two** signals with one change — the messages can stay perfectly
+    templated and the message signal still cannot fire.
+
+    A conjunction makes a signal precise and it also makes it cheap to evade.
+    """
+    from adversaries import fabricate
+    from features import fingerprint
+    from score import evaluate
+
+    # Templated subjects throughout; only the file count changes.
+    one_file = fingerprint(fabricate(tmp_path / "one", days=45, seed=5, hide_skew=True))
+    many = fingerprint(
+        fabricate(tmp_path / "many", days=45, seed=5, hide_skew=True, vary_files=True)
+    )
+
+    assert one_file.subject_unique_share > 0.98
+    assert many.subject_unique_share > 0.98  # still templated
+    fired_one = {s.name for s in evaluate(one_file) if s.fired}
+    fired_many = {s.name for s in evaluate(many) if s.fired}
+    assert "templated_messages" in fired_one
+    assert "templated_messages" not in fired_many
+
+
+def test_working_hours_raise_the_weekend_dip(tmp_path):
+    """A fabricated history commits at all hours; a human does not."""
+    from adversaries import fabricate
+    from features import fingerprint
+
+    flat = fingerprint(fabricate(tmp_path / "flat", days=60, seed=4, hide_skew=True))
+    human = fingerprint(
+        fabricate(tmp_path / "human", days=60, seed=4, hide_skew=True, human_hours=True)
+    )
+    assert human.weekend_share < flat.weekend_share
+
+
+def test_the_genuine_control_is_not_flagged(tmp_path):
+    """If this fails the detector is separating small from large, not real
+    from fake, and every other number in the repo is meaningless."""
+    from adversaries import genuine
+    from features import fingerprint
+    from score import evaluate, verdict
+
+    repo = genuine(tmp_path / "real", commits=40, seed=9)
+    call, _ = verdict(evaluate(fingerprint(repo)))
+    assert call == "CLEAN"
