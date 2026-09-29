@@ -231,7 +231,7 @@ def backfilled(target: Path, seed: int = 0, real: int = 60, fake: int = 200) -> 
 
 # name -> (builder, what it is written to defeat)
 ADVERSARIES = {
-    "naive": (lambda p, s: fabricate(p, days=150, seed=s), "nothing — the baseline forgery"),
+    "naive": (lambda p, s: fabricate(p, days=150, seed=s), "nothing - the baseline forgery"),
     "hidden_skew": (
         lambda p, s: fabricate(p, days=150, seed=s, hide_skew=True),
         "author-to-committer skew",
