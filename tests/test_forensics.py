@@ -15,7 +15,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from features import Commit, find_repos, fingerprint, shannon_entropy
+from features import Commit, _hour_of, find_repos, fingerprint, shannon_entropy
 from score import evaluate, verdict
 from synthesize import generate, generate_realistic
 
@@ -37,6 +37,24 @@ def test_entropy_of_empty_is_zero():
 def test_date_skew_is_committer_minus_author():
     assert Commit("h", 1000, 4000, "s", 1).date_skew == 3000
     assert Commit("h", 1000, 1000, "s", 1).date_skew == 0
+
+
+def test_hour_of_wraps_at_24_not_25():
+    # epoch 0 is hour 0; 23 hours later is hour 23; one more hour must wrap back to 0,
+    # not read as a 25th hour - a wraparound bug here would occasionally report a
+    # value outside 0-23, which shannon_entropy would silently treat as just another
+    # distinct string rather than a broken hour.
+    assert _hour_of(0) == 0
+    assert _hour_of(23 * 3600) == 23
+    assert _hour_of(24 * 3600) == 0
+    assert _hour_of(25 * 3600) == 1
+
+
+def test_hour_of_is_utc_not_local():
+    # Two epochs 24h apart land on the same UTC hour regardless of what timezone the
+    # commit's own offset claims - the function takes a UTC epoch, not a local time.
+    one_day = 24 * 3600
+    assert _hour_of(1_700_000_000) == _hour_of(1_700_000_000 + one_day)
 
 
 # --- against real generated histories -------------------------------------------------

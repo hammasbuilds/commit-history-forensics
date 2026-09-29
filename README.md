@@ -14,7 +14,7 @@
   <a href="https://github.com/hammasbuilds/commit-history-forensics/actions/workflows/ci.yml"><img src="https://github.com/hammasbuilds/commit-history-forensics/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/hammasbuilds/commit-history-forensics" alt="license"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
-  <img src="https://img.shields.io/badge/tests-21%20passing-brightgreen" alt="tests">
+  <img src="https://img.shields.io/badge/tests-23%20passing-brightgreen" alt="tests">
   <img src="https://img.shields.io/badge/runtime%20deps-zero-success" alt="zero dependencies">
   <img src="https://img.shields.io/badge/false%20positives-0%2F86-brightgreen" alt="false positives">
   <img src="https://img.shields.io/badge/commits%20scored-178%2C101-blue" alt="commits scored">
@@ -141,7 +141,7 @@ python demo.py                               # build 4 real histories and score 
 python src/score.py      <folder-of-repos>   # verdicts, plus the signal-coverage table
 python src/features.py   <folder-of-repos>   # raw fingerprints
 python src/synthesize.py <output-folder>     # build fakes to test against
-pytest -q                                    # 21 tests
+pytest -q                                    # 23 tests
 ```
 
 Or with `make`: `make demo`, `make test`, `make lint`, `make scan DIR=...`, `make adversaries`.
@@ -229,7 +229,7 @@ src/features.py     structural fingerprint of a history, from git log
 src/score.py        five signals with stated thresholds, and the verdict
 src/adversaries.py  one fabrication per signal, each written to defeat it
 src/synthesize.py   generate fabricated histories (ground truth only)
-tests/              21 tests that build real git repositories
+tests/              23 tests that build real git repositories
 docs/               detailed documentation
 ```
 
