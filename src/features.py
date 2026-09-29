@@ -182,7 +182,14 @@ if __name__ == "__main__":
     import sys
 
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
-    for repo in find_repos(root):
+    if not root.is_dir():
+        sys.exit(f"error: not a directory: {root}")
+    repos = find_repos(root)
+    if not repos:
+        sys.exit(
+            f"error: no git repositories found under {root} (looked for a */.git one level down)"
+        )
+    for repo in repos:
         try:
             f = fingerprint(repo)
         except (RuntimeError, ValueError) as exc:
