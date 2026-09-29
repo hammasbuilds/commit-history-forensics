@@ -14,7 +14,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from features import Fingerprint, find_repos, fingerprint
+try:
+    # `python src/score.py <dir>` (the documented, script-mode invocation): score.py's
+    # own directory is on sys.path[0], so the bare name resolves directly.
+    from features import Fingerprint, find_repos, fingerprint
+except ImportError:
+    # `import src.score` (an installed or editable `pip install`): score.py's own
+    # directory is never added to sys.path in this mode, only its parent, so the
+    # bare name above raises - the package-qualified name is what resolves here.
+    from src.features import Fingerprint, find_repos, fingerprint
 
 
 @dataclass
@@ -136,25 +144,60 @@ def coverage(scored: list[dict]) -> None:
     print("The false-positive claim rests on those, not on the full count.")
 
 
+def _as_json(r: dict) -> dict:
+    """`report()`'s dict, with the dataclasses swapped for plain JSON-safe values."""
+    return {
+        "repo": r["repo"],
+        "commits": r["commits"],
+        "verdict": r["verdict"],
+        "flags": r["flags"],
+        "signals": [
+            {"name": s.name, "fired": s.fired, "value": s.value, "detail": s.detail}
+            for s in r["signals"]
+        ],
+    }
+
+
 if __name__ == "__main__":
+    import json
     import sys
 
-    roots = [Path(a) for a in sys.argv[1:]] or [Path(".")]
+    args = [a for a in sys.argv[1:] if a != "--json"]
+    as_json = "--json" in sys.argv[1:]
+    roots = [Path(a) for a in args] or [Path(".")]
+
+    bad = [str(root) for root in roots if not root.is_dir()]
+    if bad:
+        sys.exit(f"error: not a directory: {', '.join(bad)}")
+
     repos: list[Path] = []
     for root in roots:
         repos.extend(find_repos(root))
+    if not repos:
+        sys.exit(
+            f"error: no git repositories found under {', '.join(str(r) for r in roots)} "
+            "(looked for a */.git one level down)"
+        )
 
     scored: list[dict] = []
-    print(f"{'repo':32} {'n':>5}  {'verdict':12} flags  evidence")
-    print("-" * 100)
+    skipped: list[str] = []
+    if not as_json:
+        print(f"{'repo':32} {'n':>5}  {'verdict':12} flags  evidence")
+        print("-" * 100)
     for repo in repos:
         try:
             r = report(repo)
         except (RuntimeError, ValueError) as exc:
-            print(f"{repo.name:32} skipped: {exc}")
+            skipped.append(f"{repo.name}: {exc}")
+            if not as_json:
+                print(f"{repo.name:32} skipped: {exc}")
             continue
-        first = next((s.name for s in r["signals"] if s.fired), "-")
-        print(f"{r['repo']:32} {r['commits']:5}  {r['verdict']:12} {r['flags']:5}  {first}")
+        if not as_json:
+            first = next((s.name for s in r["signals"] if s.fired), "-")
+            print(f"{r['repo']:32} {r['commits']:5}  {r['verdict']:12} {r['flags']:5}  {first}")
         scored.append(r)
 
-    coverage(scored)
+    if as_json:
+        print(json.dumps({"scored": [_as_json(r) for r in scored], "skipped": skipped}, indent=1))
+    else:
+        coverage(scored)
