@@ -139,6 +139,7 @@ directory and pushes nowhere.
 ```bash
 python demo.py                               # build 4 real histories and score them (~1 min)
 python src/score.py      <folder-of-repos>   # verdicts, plus the signal-coverage table
+python src/score.py      <folder-of-repos> --json   # the same, as JSON for scripting
 python src/features.py   <folder-of-repos>   # raw fingerprints
 python src/synthesize.py <output-folder>     # build fakes to test against
 pytest -q                                    # 23 tests

@@ -166,6 +166,17 @@ a single `GIT_COMMITTER_DATE` defeats it permanently.
 commits; 33 of them have fewer than 30 commits, which is why they are reported as part of
 the coverage denominator rather than as evidence on their own.
 
+**Those 46 are not named here, and that is a real gap, not an oversight.** They are
+private local repositories on the machine this was run on - not redistributable, and
+listing their names would not let a reader re-clone them anyway. The 40 named projects
+above (177,582 of the 178,101 commits, 99.7% of the total) *are* independently
+reproducible: `git clone --filter=blob:none <url>` each one and `make scan DIR=<folder
+holding them>` reproduces that part of the table exactly. What cannot currently be
+reproduced from this repo is the last 519 commits' worth. `make scan DIR=<a folder of
+your own real repos>` reproduces the *methodology* - the zero-false-positive property on
+whatever real history you point it at - which is the claim this section exists to
+support; it does not reproduce this exact total.
+
 One repository (`assay-drift`) is not readable - `ValueError: no commits` on an initialised
 repository with no history. That is the empty-history path, handled and counted as
 unreadable rather than as CLEAN.
