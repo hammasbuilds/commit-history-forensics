@@ -5,7 +5,12 @@ description = "Detect fabricated git histories from structural signals: timestam
 requires-python = ">=3.11"
 dependencies = []
 
+# Both, deliberately. `uv sync --all-groups` (what CI and the Makefile use) reads the
+# dependency group; `pip install -e ".[dev]"` (what the README also documents) reads
+# the extra and, since it was empty, silently installed nothing - the Makefile's own
+# `make install` target then "succeeded" having installed nothing but the base package.
 [project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.16,<0.17"]
 
 [dependency-groups]
 # ruff pinned to a minor range: the formatter changes between minor versions, so an
