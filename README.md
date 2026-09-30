@@ -34,7 +34,7 @@ disagree with a number rather than with a black box.
 
 ---
 
-## The result
+## Results
 
 ### One adversary per signal
 
