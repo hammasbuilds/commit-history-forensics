@@ -11,27 +11,13 @@ is to *detect* these, not to make them: see README for why using one is a bad id
 from __future__ import annotations
 
 import random
-import subprocess
 import time
 from pathlib import Path
 
-ENV_BASE = {
-    "GIT_AUTHOR_NAME": "Test Author",
-    "GIT_AUTHOR_EMAIL": "test@example.invalid",
-    "GIT_COMMITTER_NAME": "Test Author",
-    "GIT_COMMITTER_EMAIL": "test@example.invalid",
-}
-
-
-def _run(args: list[str], cwd: Path, env: dict | None = None) -> None:
-    import os
-
-    full = {**os.environ, **ENV_BASE, **(env or {})}
-    # check=False: the error is raised below with the git stderr attached, which is
-    # far more useful than CalledProcessError's exit code alone.
-    out = subprocess.run(args, cwd=cwd, env=full, capture_output=True, text=True, check=False)
-    if out.returncode != 0:
-        raise RuntimeError(f"{' '.join(args[:3])} failed: {out.stderr.strip()[:200]}")
+try:
+    from gitbuild import HistoryBuilder
+except ImportError:  # installed package: only `src.` resolves
+    from src.gitbuild import HistoryBuilder
 
 
 def generate(
@@ -50,10 +36,7 @@ def generate(
     the easiest possible forgery.
     """
     rng = random.Random(seed)
-    target.mkdir(parents=True, exist_ok=True)
-    _run(["git", "init", "-q", "-b", "main"], target)
-
-    log = target / "README.md"
+    repo = HistoryBuilder(target)
     now = int(time.time())
 
     for day in range(days, 0, -1):
@@ -61,14 +44,13 @@ def generate(
             continue
         for i in range(rng.randint(1, max_per_day)):
             stamp = now - day * 86400 + i * 60
-            iso = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(stamp))
             message = f"Contribution: {time.strftime('%Y-%m-%d %H:%M', time.localtime(stamp))}"
-            log.write_text(log.read_text() + message + "\n\n" if log.exists() else message + "\n")
-            _run(["git", "add", "README.md"], target)
-            env = {"GIT_COMMITTER_DATE": iso} if hide_skew else {}
-            _run(["git", "commit", "-q", "-m", message, "--date", iso], target, env)
+            repo.append("README.md", message + "\n")
+            # `git commit --date` sets only the author date; the committer date stays
+            # at the moment the forgery ran, unless the tool also sets it.
+            repo.commit(message, stamp, stamp if hide_skew else now)
 
-    return target
+    return repo.finish()
 
 
 def generate_realistic(target: Path, commits: int = 40, seed: int = 0) -> Path:
@@ -78,8 +60,8 @@ def generate_realistic(target: Path, commits: int = 40, seed: int = 0) -> Path:
     rather than fabricated from real.
     """
     rng = random.Random(seed)
-    target.mkdir(parents=True, exist_ok=True)
-    _run(["git", "init", "-q", "-b", "main"], target)
+    repo = HistoryBuilder(target)
+    start = int(time.time()) - commits
 
     verbs = ["Add", "Fix", "Refactor", "Remove", "Document", "Test", "Rename", "Handle"]
     nouns = [
@@ -97,18 +79,14 @@ def generate_realistic(target: Path, commits: int = 40, seed: int = 0) -> Path:
         "CLI flag",
     ]
 
-    for _ in range(commits):
+    for n in range(commits):
         # Real commits touch a varying number of files.
-        for f in range(rng.randint(1, 6)):
-            path = target / f"mod_{rng.randint(0, 12)}.py"
-            path.write_text(
-                path.read_text() + f"# {rng.random()}\n" if path.exists() else f"# {rng.random()}\n"
-            )
-        _run(["git", "add", "-A"], target)
+        for _ in range(rng.randint(1, 6)):
+            repo.append(f"mod_{rng.randint(0, 12)}.py", f"# {rng.random()}\n")
         message = f"{rng.choice(verbs)} {rng.choice(nouns)}"
-        _run(["git", "commit", "-q", "-m", message], target)
+        repo.commit(message, start + n)
 
-    return target
+    return repo.finish()
 
 
 if __name__ == "__main__":

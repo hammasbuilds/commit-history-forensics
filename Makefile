@@ -10,7 +10,7 @@ help:                ## Show this help
 install:             ## Install the dev dependencies (runtime deps: none)
 	$(PY) -m pip install -e ".[dev]" || uv pip install -e ".[dev]"
 
-demo:                ## Build four real histories and score them (~1 min, no network)
+demo:                ## Build four real histories and score them (~5 s, no network)
 	$(PY) demo.py
 
 test:                ## Run the test suite

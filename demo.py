@@ -8,9 +8,9 @@ will always look perfect, so the demo builds the genuine control alongside
 three fabrications of increasing care and prints what each one costs the
 detector.
 
-Takes a few minutes: every repository here is real, built with real `git
-commit` calls, because a fabricated history is a property of actual git
-objects and cannot be faked with a mock.
+Takes a few seconds. Every repository here is real - actual git commit
+objects written by `git fast-import` (src/gitbuild.py), because a fabricated
+history is a property of git objects and cannot be faked with a mock.
 
 The fabrications span 40 days, to keep the demo short. Two of the five signals
 are gated on a span over 60 days or 30+ commits, so they cannot fire here and
@@ -63,7 +63,7 @@ CASES = [
 def main() -> int:
     work = Path(tempfile.mkdtemp(prefix="chf-demo-"))
     print(f"Building {len(CASES)} real git histories in {work}")
-    print("(this takes about a minute - every commit below is a real commit)\n")
+    print("(a few seconds - every commit below is a real git commit object)\n")
 
     rows = []
     try:

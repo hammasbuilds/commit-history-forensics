@@ -27,16 +27,13 @@ adversaries this project imagined, and a cleverer one may exist.
 from __future__ import annotations
 
 import random
-import subprocess
 import time
 from pathlib import Path
 
-ENV_BASE = {
-    "GIT_AUTHOR_NAME": "Test Author",
-    "GIT_AUTHOR_EMAIL": "test@example.invalid",
-    "GIT_COMMITTER_NAME": "Test Author",
-    "GIT_COMMITTER_EMAIL": "test@example.invalid",
-}
+try:
+    from gitbuild import HistoryBuilder
+except ImportError:  # installed package: only `src.` resolves
+    from src.gitbuild import HistoryBuilder
 
 VERBS = [
     "Add",
@@ -99,23 +96,14 @@ TAILS = [
 ]
 
 
-def _run(args: list[str], cwd: Path, env: dict | None = None) -> None:
-    full = {**ENV_BASE, **(env or {})}
-    import os
-
-    subprocess.run(args, cwd=cwd, check=True, capture_output=True, env={**os.environ, **full})
-
-
 def _message(rng: random.Random) -> str:
     tail = rng.choice(TAILS).replace("{n}", str(rng.randint(100, 9999)))
     return f"{rng.choice(VERBS)} {rng.choice(NOUNS)}{tail}"
 
 
-def _touch(target: Path, rng: random.Random, files: int) -> None:
+def _touch(repo: HistoryBuilder, rng: random.Random, files: int) -> None:
     for _ in range(files):
-        path = target / f"mod_{rng.randint(0, 25)}.py"
-        existing = path.read_text() if path.exists() else ""
-        path.write_text(existing + f"# {rng.random()}\n")
+        repo.append(f"mod_{rng.randint(0, 25)}.py", f"# {rng.random()}\n")
 
 
 def _working_hour(rng: random.Random, day_epoch: int) -> int:
@@ -139,10 +127,32 @@ def fabricate(
     bursty: bool = False,
 ) -> Path:
     """One fabricated history, with whichever evasions are switched on."""
-    rng = random.Random(seed)
-    target.mkdir(parents=True, exist_ok=True)
-    _run(["git", "init", "-q", "-b", "main"], target)
+    repo = HistoryBuilder(target)
+    _fabricate_into(
+        repo,
+        days=days,
+        seed=seed,
+        hide_skew=hide_skew,
+        vary_files=vary_files,
+        vary_messages=vary_messages,
+        human_hours=human_hours,
+        bursty=bursty,
+    )
+    return repo.finish()
 
+
+def _fabricate_into(
+    repo: HistoryBuilder,
+    *,
+    days: int,
+    seed: int,
+    hide_skew: bool,
+    vary_files: bool,
+    vary_messages: bool,
+    human_hours: bool,
+    bursty: bool,
+) -> None:
+    rng = random.Random(seed)
     now = int(time.time())
     midnight = now - (now % 86400)
 
@@ -173,19 +183,16 @@ def fabricate(
             iso = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(stamp))
 
             if vary_files:
-                _touch(target, rng, rng.randint(1, 6))
+                _touch(repo, rng, rng.randint(1, 6))
             else:
-                log = target / "README.md"
-                existing = log.read_text() if log.exists() else ""
-                log.write_text(existing + iso + "\n")
+                repo.append("README.md", iso + "\n")
 
             message = (
                 _message(rng) if vary_messages else f"Contribution: {iso[:16].replace('T', ' ')}"
             )
-            env = {"GIT_COMMITTER_DATE": iso} if hide_skew else {}
-            _run(["git", "add", "-A"], target)
-            _run(["git", "commit", "-q", "-m", message, "--date", iso], target, env)
-    return target
+            # The naive tool runs `git commit --date`, which leaves the committer
+            # date at the moment the forgery was made.
+            repo.commit(message, stamp, stamp if hide_skew else now)
 
 
 def genuine(target: Path, commits: int = 120, seed: int = 0) -> Path:
@@ -195,13 +202,18 @@ def genuine(target: Path, commits: int = 120, seed: int = 0) -> Path:
     rather than fabricated from real.
     """
     rng = random.Random(seed)
-    target.mkdir(parents=True, exist_ok=True)
-    _run(["git", "init", "-q", "-b", "main"], target)
-    for _ in range(commits):
-        _touch(target, rng, rng.randint(1, 6))
-        _run(["git", "add", "-A"], target)
-        _run(["git", "commit", "-q", "-m", _message(rng)], target)
-    return target
+    repo = HistoryBuilder(target)
+    _commit_normally(repo, rng, commits)
+    return repo.finish()
+
+
+def _commit_normally(repo: HistoryBuilder, rng: random.Random, commits: int) -> None:
+    # Committed "now", a second apart, author date == committer date: what a run of
+    # plain `git commit` calls in a loop produces.
+    start = int(time.time()) - commits
+    for i in range(commits):
+        _touch(repo, rng, rng.randint(1, 6))
+        repo.commit(_message(rng), start + i)
 
 
 def backfilled(target: Path, seed: int = 0, real: int = 60, fake: int = 200) -> Path:
@@ -212,8 +224,9 @@ def backfilled(target: Path, seed: int = 0, real: int = 60, fake: int = 200) -> 
     is diluted by the real half.
     """
     rng = random.Random(seed)
-    fabricate(
-        target,
+    repo = HistoryBuilder(target)
+    _fabricate_into(
+        repo,
         days=150,
         seed=seed,
         hide_skew=True,
@@ -222,11 +235,8 @@ def backfilled(target: Path, seed: int = 0, real: int = 60, fake: int = 200) -> 
         human_hours=True,
         bursty=True,
     )
-    for _ in range(real):
-        _touch(target, rng, rng.randint(1, 6))
-        _run(["git", "add", "-A"], target)
-        _run(["git", "commit", "-q", "-m", _message(rng)], target)
-    return target
+    _commit_normally(repo, rng, real)
+    return repo.finish()
 
 
 # name -> (builder, what it is written to defeat)

@@ -314,3 +314,38 @@ def test_the_genuine_control_is_not_flagged(tmp_path):
     repo = genuine(tmp_path / "real", commits=40, seed=9)
     call, _ = verdict(evaluate(fingerprint(repo)))
     assert call == "CLEAN"
+
+
+# --- the history builder -----------------------------------------------------
+
+
+def test_fast_import_writes_the_dates_and_files_it_was_given(tmp_path):
+    """The generators no longer call `git commit`; check that what git log reads back
+    is exactly what the builder was told, so the speed-up changed nothing measured."""
+    from features import read_commits
+    from gitbuild import HistoryBuilder
+
+    repo = HistoryBuilder(tmp_path / "r")
+    repo.append("a.py", "x\n")
+    repo.commit("first", 1_600_000_000, 1_700_000_000)
+    repo.append("a.py", "y\n")
+    repo.write("b.py", "z\n")
+    repo.commit("second", 1_600_086_400)
+    repo.finish()
+
+    second, first = read_commits(tmp_path / "r")
+    assert (first.subject, first.author_time, first.commit_time, first.files) == (
+        "first",
+        1_600_000_000,
+        1_700_000_000,
+        1,
+    )
+    assert (second.date_skew, second.files) == (0, 2)
+    assert (tmp_path / "r" / "a.py").read_text() == "x\ny\n", "working tree checked out"
+
+
+def test_builder_refuses_an_empty_commit(tmp_path):
+    from gitbuild import HistoryBuilder
+
+    with pytest.raises(ValueError, match="no changes"):
+        HistoryBuilder(tmp_path / "r").commit("nothing", 0)
