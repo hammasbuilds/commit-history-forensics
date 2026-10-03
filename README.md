@@ -14,7 +14,7 @@
   <a href="https://github.com/hammasbuilds/commit-history-forensics/actions/workflows/ci.yml"><img src="https://github.com/hammasbuilds/commit-history-forensics/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/hammasbuilds/commit-history-forensics" alt="license"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
-  <img src="https://img.shields.io/badge/tests-28%20passing-brightgreen" alt="tests">
+  <img src="https://img.shields.io/badge/tests-29%20passing-brightgreen" alt="tests">
   <img src="https://img.shields.io/badge/runtime%20deps-zero-success" alt="zero dependencies">
   <img src="https://img.shields.io/badge/false%20positives-0%2F86-brightgreen" alt="false positives">
   <img src="https://img.shields.io/badge/commits%20scored-178%2C101-blue" alt="commits scored">
@@ -141,8 +141,9 @@ python demo.py                               # build 4 real histories and score 
 python src/score.py      <repo-or-folder>    # verdicts, plus the signal-coverage table
 python src/score.py      <repo-or-folder> --json    # the same, as JSON for scripting
 python src/features.py   <repo-or-folder>    # raw fingerprints
+python src/adversaries.py                    # the 16-adversary table below (~25 s)
 python src/synthesize.py <output-folder>     # build fakes to test against
-pytest -q                                    # 28 tests (~20 s)
+pytest -q                                    # 29 tests (~30 s)
 ```
 
 A path is either one repository (it has a `.git`) or a folder whose immediate
@@ -235,7 +236,7 @@ src/score.py        five signals with stated thresholds, and the verdict
 src/adversaries.py  one fabrication per signal, each written to defeat it
 src/synthesize.py   generate fabricated histories (ground truth only)
 src/gitbuild.py     writes a whole synthetic history in one `git fast-import`
-tests/              28 tests that build real git repositories
+tests/              29 tests that build real git repositories
 docs/               detailed documentation
 ```
 

@@ -391,3 +391,14 @@ def test_unknown_option_is_an_error_not_a_path(tmp_path):
     )
     assert out.returncode == 1
     assert "unknown option --jsn" in out.stderr
+
+
+def test_the_adversary_table_command_runs(capsys):
+    """`python src/adversaries.py` is the documented way to reproduce the table."""
+    from adversaries import ADVERSARIES, run
+
+    assert run(seeds=(1,), controls=1) == 0
+    out = capsys.readouterr().out
+    assert all(name in out for name in ADVERSARIES)
+    assert "fabrications flagged : 6/8" in out
+    assert "DEFEATED BY          : full_stealth, backfilled" in out

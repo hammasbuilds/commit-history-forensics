@@ -17,18 +17,22 @@ same generator and differed only in setting `GIT_COMMITTER_DATE` - one trick, co
 A detector scored against a trick it already knows will always look perfect.
 
 `src/adversaries.py` builds eight fabrications, each written to defeat a named signal, run
-on two seeds each.
+on two seeds each (1 and 2). Reproduce with `python src/adversaries.py` (or
+`make adversaries`): about 25 s, no network. Histories are dated back from the day you run
+it, so the commit counts of the working-hours adversaries (`human_hours`, `full_stealth`,
+`backfilled`) shift by a few percent with the weekday; the verdicts below did not change
+between runs. Counts here are from 2026-10-03.
 
 | Adversary | Written to defeat | Commits | Verdict | Flags | Signals that fired |
 |---|---|---:|---|---:|---|
 | `naive` | nothing - the baseline | 337 / 332 | **FABRICATED** | 4 | skew, single-file, templated, saturated |
 | `hidden_skew` | author&rarr;committer skew | 337 / 332 | **FABRICATED** | 3 | single-file, templated, saturated |
 | `varied_messages` | templated subject lines | 360 / 369 | SUSPICIOUS | 2 | single-file, saturated |
-| `human_hours` | flat hour-of-day distribution | 244 / 270 | SUSPICIOUS | 2 | single-file, templated |
+| `human_hours` | flat hour-of-day distribution | 273 / 282 | SUSPICIOUS | 2 | single-file, templated |
 | `bursty` | uniform commits per active day | 368 / 391 | SUSPICIOUS | 2 | single-file, templated |
 | `varied_files` | one file per commit | 342 / 354 | ONE FLAG | 1 | saturated |
-| `full_stealth` | every signal at once | 299 / 247 | **CLEAN** | **0** | - |
-| `backfilled` | every signal, then real work | 359 / 307 | **CLEAN** | **0** | - |
+| `full_stealth` | every signal at once | 285 / 248 | **CLEAN** | **0** | - |
+| `backfilled` | every signal, then real work | 345 / 308 | **CLEAN** | **0** | - |
 
 ```
 fabrications flagged : 12/16

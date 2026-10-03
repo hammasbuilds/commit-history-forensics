@@ -277,3 +277,58 @@ ADVERSARIES = {
     ),
     "backfilled": (lambda p, s: backfilled(p, seed=s), "every signal, then diluted by real work"),
 }
+
+
+def run(seeds: tuple[int, ...] = (1, 2), controls: int = 3) -> int:
+    """Build every adversary on each seed, plus genuine controls, and print the table.
+
+    This is the command behind the adversary table in README.md and docs/RESULTS.md.
+    """
+    import shutil
+    import tempfile
+
+    try:
+        from features import fingerprint
+        from score import evaluate, verdict
+    except ImportError:  # installed package
+        from src.features import fingerprint
+        from src.score import evaluate, verdict
+
+    def score(repo: Path) -> tuple[int, str, int, list[str]]:
+        f = fingerprint(repo)
+        signals = evaluate(f)
+        label, fired = verdict(signals)
+        return f.commits, label, fired, [s.name for s in signals if s.fired]
+
+    work = Path(tempfile.mkdtemp(prefix="chf-adversaries-"))
+    flagged = fabricated = total = 0
+    defeated: list[str] = []
+    try:
+        print(f"{'adversary':<17}{'seed':>4}{'commits':>8}  {'verdict':<12}{'flags':>5}  fired")
+        print("-" * 96)
+        for name, (build, _) in ADVERSARIES.items():
+            for seed in seeds:
+                n, label, fired, names = score(build(work / f"{name}-{seed}", seed))
+                total += 1
+                flagged += fired > 0
+                fabricated += label == "FABRICATED"
+                if fired == 0 and name not in defeated:
+                    defeated.append(name)
+                print(
+                    f"{name:<17}{seed:>4}{n:>8}  {label:<12}{fired:>5}  {', '.join(names) or '-'}"
+                )
+        false_pos = sum(
+            score(genuine(work / f"genuine-{s}", seed=s))[2] > 0 for s in range(controls)
+        )
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    print()
+    print(f"fabrications flagged : {flagged}/{total}")
+    print(f"reaching FABRICATED  : {fabricated:>2}/{total}")
+    print(f"false positives      : {false_pos}/{controls}   (generated genuine controls)")
+    print(f"DEFEATED BY          : {', '.join(defeated) or '-'}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())

@@ -23,9 +23,8 @@ lint:                ## Check formatting and lint
 scan:                ## Score every git repository under DIR (default: the parent directory)
 	$(PY) src/score.py $(or $(DIR),..)
 
-adversaries:         ## Build one adversary per signal and report which signal survives
-	$(PY) -c "import sys; sys.path.insert(0,'src'); import adversaries; \
-	print('\n'.join(f'{k:<16} defeats {v[1]}' for k, v in adversaries.ADVERSARIES.items()))"
+adversaries:         ## Build all 8 adversaries x 2 seeds + 3 controls and score them (~25 s)
+	$(PY) src/adversaries.py
 
 clean:               ## Remove caches
 	rm -rf .pytest_cache .ruff_cache src/__pycache__ tests/__pycache__
