@@ -174,8 +174,20 @@ def fingerprint(repo: Path, limit: int | None = None) -> Fingerprint:
     )
 
 
+def is_repo(path: Path) -> bool:
+    # `.git` is a directory in a normal clone and a file in a worktree or submodule.
+    return (path / ".git").exists()
+
+
 def find_repos(root: Path) -> list[Path]:
-    return sorted(p.parent for p in root.glob("*/.git") if p.is_dir())
+    """`root` itself if it is a repository, else every repository one level below it.
+
+    Pointing the tool at the one repo you want checked is the natural first try, so it
+    has to work - not only at a folder holding several.
+    """
+    if is_repo(root):
+        return [root.resolve()]  # resolved, so `.` still reports a repo name
+    return sorted(p for p in root.iterdir() if p.is_dir() and is_repo(p))
 
 
 if __name__ == "__main__":
@@ -187,7 +199,8 @@ if __name__ == "__main__":
     repos = find_repos(root)
     if not repos:
         sys.exit(
-            f"error: no git repositories found under {root} (looked for a */.git one level down)"
+            f"error: no git repositories found under {root} "
+            "(not a repo itself, and no */.git one level down)"
         )
     for repo in repos:
         try:

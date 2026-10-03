@@ -349,3 +349,45 @@ def test_builder_refuses_an_empty_commit(tmp_path):
 
     with pytest.raises(ValueError, match="no changes"):
         HistoryBuilder(tmp_path / "r").commit("nothing", 0)
+
+
+# --- the CLI -----------------------------------------------------------------
+
+SCORE = str(Path(__file__).resolve().parent.parent / "src" / "score.py")
+
+
+def test_a_single_repo_path_is_scored_itself(genuine):
+    """Pointing at the one repository to check is the natural first try."""
+    assert find_repos(genuine) == [genuine.resolve()]
+    out = subprocess.run(
+        [sys.executable, SCORE, str(genuine), "--json"], capture_output=True, text=True, check=False
+    )
+    assert out.returncode == 0, out.stderr
+    import json
+
+    scored = json.loads(out.stdout)["scored"]
+    assert [(r["repo"], r["verdict"]) for r in scored] == [(genuine.name, "CLEAN")]
+
+
+def test_a_folder_of_repos_still_scans_each_one(tmp_path, genuine, naive_fake):
+    import json
+    import shutil
+
+    shutil.copytree(genuine, tmp_path / "real")
+    shutil.copytree(naive_fake, tmp_path / "fake")
+    out = subprocess.run(
+        [sys.executable, SCORE, str(tmp_path), "--json"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    verdicts = {r["repo"]: r["verdict"] for r in json.loads(out.stdout)["scored"]}
+    assert verdicts == {"fake": "FABRICATED", "real": "CLEAN"}
+
+
+def test_unknown_option_is_an_error_not_a_path(tmp_path):
+    out = subprocess.run(
+        [sys.executable, SCORE, "--jsn"], capture_output=True, text=True, check=False
+    )
+    assert out.returncode == 1
+    assert "unknown option --jsn" in out.stderr

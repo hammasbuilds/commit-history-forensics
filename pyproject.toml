@@ -5,6 +5,10 @@ description = "Detect fabricated git histories from structural signals: timestam
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+# `chf-score <repo-or-folder> [--json]`, the same as `python src/score.py`.
+chf-score = "src.score:main"
+
 # Both, deliberately. `uv sync --all-groups` (what CI and the Makefile use) reads the
 # dependency group; `pip install -e ".[dev]"` (what the README also documents) reads
 # the extra and, since it was empty, silently installed nothing - the Makefile's own

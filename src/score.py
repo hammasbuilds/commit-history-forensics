@@ -158,12 +158,26 @@ def _as_json(r: dict) -> dict:
     }
 
 
-if __name__ == "__main__":
+USAGE = """usage: chf-score [PATH ...] [--json]
+
+Score git histories for signs of fabrication. Each PATH is either one repository or a
+folder whose immediate subfolders are repositories (default: the current directory).
+"""
+
+
+def main(argv: list[str] | None = None) -> int:
     import json
     import sys
 
-    args = [a for a in sys.argv[1:] if a != "--json"]
-    as_json = "--json" in sys.argv[1:]
+    argv = sys.argv[1:] if argv is None else argv
+    if "-h" in argv or "--help" in argv:
+        print(USAGE, end="")
+        return 0
+    args = [a for a in argv if a != "--json"]
+    as_json = "--json" in argv
+    unknown = [a for a in args if a.startswith("-")]
+    if unknown:
+        sys.exit(f"error: unknown option {unknown[0]}\n{USAGE}")
     roots = [Path(a) for a in args] or [Path(".")]
 
     bad = [str(root) for root in roots if not root.is_dir()]
@@ -176,7 +190,7 @@ if __name__ == "__main__":
     if not repos:
         sys.exit(
             f"error: no git repositories found under {', '.join(str(r) for r in roots)} "
-            "(looked for a */.git one level down)"
+            "(not a repo itself, and no */.git one level down)"
         )
 
     scored: list[dict] = []
@@ -201,3 +215,8 @@ if __name__ == "__main__":
         print(json.dumps({"scored": [_as_json(r) for r in scored], "skipped": skipped}, indent=1))
     else:
         coverage(scored)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
